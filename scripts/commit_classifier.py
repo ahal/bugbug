@@ -123,13 +123,10 @@ def replace_reviewers(commit_description, reviewers):
 
 class CommitClassifier(object):
     def __init__(
-        self, model_name, cache_root, git_repo_dir, method_defect_predictor_dir
+        self, model_name, gecko_path, git_repo_dir, method_defect_predictor_dir
     ):
         self.model_name = model_name
-        self.cache_root = cache_root
-
-        assert os.path.isdir(cache_root), f"Cache root {cache_root} is not a dir."
-        self.repo_dir = os.path.join(cache_root, "mozilla-central")
+        self.repo_dir = gecko_path
 
         self.model = download_and_load_model(model_name)
         assert self.model is not None
@@ -706,7 +703,8 @@ def main():
     parser = argparse.ArgumentParser(description=description)
 
     parser.add_argument("model", help="Which model to use for evaluation")
-    parser.add_argument("cache_root", help="Cache for repository clones.")
+    parser.add_argument("gecko_path", help="Path to a Gecko repository. If no repository exists, "
+                                           "it will be cloned to this location.")
     parser.add_argument("diff_id", help="diff ID to analyze.", type=int)
     parser.add_argument(
         "--git_repo_dir", help="Path where the git repository will be cloned."
@@ -719,7 +717,7 @@ def main():
     args = parser.parse_args()
 
     classifier = CommitClassifier(
-        args.model, args.cache_root, args.git_repo_dir, args.method_defect_predictor_dir
+        args.model, args.gecko_path, args.git_repo_dir, args.method_defect_predictor_dir
     )
     classifier.classify(args.diff_id)
 

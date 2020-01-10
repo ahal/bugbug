@@ -47,7 +47,7 @@
             "command": [
                 "bugbug-classify-commit",
                 "testselect",
-                "/cache",
+                "/cache/mozilla-central",
                 "${payload['DIFF_ID']}"
             ],
             "image": "mozilla/bugbug-commit-retrieval",
