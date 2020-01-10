@@ -221,16 +221,16 @@ class CommitClassifier(object):
 
         repository.download_commits(self.repo_dir, rev_start)
 
-    def apply_phab(self, hg, diff_id):
-        def has_revision(revision):
-            if not revision:
-                return False
-            try:
-                hg.identify(revision)
-                return True
-            except hglib.error.CommandError:
-                return False
+    def has_revision(self, hg, revision):
+        if not revision:
+            return False
+        try:
+            hg.identify(revision)
+            return True
+        except hglib.error.CommandError:
+            return False
 
+    def apply_phab(self, hg, diff_id):
         phabricator_api = PhabricatorAPI(
             api_key=get_secret("PHABRICATOR_TOKEN"), url=get_secret("PHABRICATOR_URL")
         )
@@ -246,7 +246,7 @@ class CommitClassifier(object):
             needed_stack.insert(0, patch)
 
             # Stop as soon as a base revision is available
-            if has_revision(patch.base_revision):
+            if self.has_revision(hg, patch.base_revision):
                 logger.info(
                     f"Stopping at diff {patch.id} and revision {patch.base_revision}"
                 )
@@ -267,7 +267,7 @@ class CommitClassifier(object):
 
         # Update repo to base revision
         hg_base = needed_stack[0].base_revision
-        if not has_revision(hg_base):
+        if not self.has_revision(hg, hg_base):
             logger.warning("Missing base revision {} from Phabricator".format(hg_base))
             hg_base = "tip"
 
@@ -539,13 +539,21 @@ class CommitClassifier(object):
         with open("importances.json", "w") as f:
             json.dump(features, f)
 
-    def classify(self, diff_id):
+    def classify(self, item):
+        """Classify a commit.
+
+        Args:
+            item (str): A revision or phabricator diff ID.
+        """
         self.update_commit_db()
 
         with hglib.open(self.repo_dir) as hg:
-            self.apply_phab(hg, diff_id)
-
-            patch_rev = hg.log(revrange="not public()")[0].node
+            if self.has_revision(hg, item):
+                patch_rev = item
+            else:
+                # Assume it's a phabricator diff ID.
+                self.apply_phab(hg, item)
+                patch_rev = hg.log(revrange="not public()")[0].node
 
             # Analyze patch.
             commits = repository.download_commits(
@@ -705,7 +713,7 @@ def main():
     parser.add_argument("model", help="Which model to use for evaluation")
     parser.add_argument("gecko_path", help="Path to a Gecko repository. If no repository exists, "
                                            "it will be cloned to this location.")
-    parser.add_argument("diff_id", help="diff ID to analyze.", type=int)
+    parser.add_argument("item", help="A revision or Phabricator diff ID to analyze.")
     parser.add_argument(
         "--git_repo_dir", help="Path where the git repository will be cloned."
     )
@@ -719,7 +727,7 @@ def main():
     classifier = CommitClassifier(
         args.model, args.gecko_path, args.git_repo_dir, args.method_defect_predictor_dir
     )
-    classifier.classify(args.diff_id)
+    classifier.classify(args.item)
 
 
 if __name__ == "__main__":
