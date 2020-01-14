@@ -680,7 +680,7 @@ def calculate_experiences(commits, first_pushdate, save=True):
     if save:
         with open("data/commit_experiences.pickle", "wb") as f:
             pickle.dump(
-                (experiences, first_commit_time), f, protocol=pickle.HIGHEST_PROTOCOL
+                (experiences, first_commit_time), f, protocol=pickle.DEFAULT_PROTOCOL
             )
 
 
