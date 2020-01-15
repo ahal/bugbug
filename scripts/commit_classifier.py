@@ -228,7 +228,7 @@ class CommitClassifier(object):
             hg.identify(revision)
             return True
         except hglib.error.CommandError:
-            return False
+            raise
 
     def apply_phab(self, hg, diff_id):
         phabricator_api = PhabricatorAPI(
